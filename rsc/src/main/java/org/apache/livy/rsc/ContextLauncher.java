@@ -29,13 +29,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -186,7 +180,7 @@ class ContextLauncher {
 
       List<String> jars = new ArrayList<>();
       for (File dir : allJars) {
-        for (File f : dir.listFiles()) {
+        for (File f : Objects.requireNonNull(dir.listFiles())) {
            jars.add(f.getAbsolutePath());
         }
       }
@@ -286,11 +280,8 @@ class ContextLauncher {
       File sparkDefaults = new File(confDir + File.separator + "spark-defaults.conf");
       if (sparkDefaults.isFile()) {
         Properties sparkConf = new Properties();
-        Reader r = new InputStreamReader(new FileInputStream(sparkDefaults), UTF_8);
-        try {
+        try (Reader r = new InputStreamReader(new FileInputStream(sparkDefaults), UTF_8)) {
           sparkConf.load(r);
-        } finally {
-          r.close();
         }
 
         for (String key : sparkConf.stringPropertyNames()) {
@@ -305,11 +296,8 @@ class ContextLauncher {
     Files.setPosixFilePermissions(file.toPath(), EnumSet.of(OWNER_READ, OWNER_WRITE));
     //file.deleteOnExit();
 
-    Writer writer = new OutputStreamWriter(new FileOutputStream(file), UTF_8);
-    try {
+    try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), UTF_8)) {
       confView.store(writer, "Livy App Context Configuration");
-    } finally {
-      writer.close();
     }
 
     return file;
@@ -391,7 +379,7 @@ class ContextLauncher {
         public void run() {
           try {
             RSCClientFactory.childProcesses().incrementAndGet();
-            int exitCode = child.waitFor();
+            int exitCode = Objects.requireNonNull(child).waitFor();
             if (exitCode != 0) {
               LOG.warn("Child process exited with code {}.", exitCode);
               fail(new IOException(String.format("Child process exited with code %d.", exitCode)));
@@ -399,7 +387,7 @@ class ContextLauncher {
           } catch (InterruptedException ie) {
             LOG.warn("Waiting thread interrupted, killing child process.");
             Thread.interrupted();
-            child.destroy();
+            Objects.requireNonNull(child).destroy();
           } catch (Exception e) {
             LOG.warn("Exception while waiting for child process.", e);
           } finally {

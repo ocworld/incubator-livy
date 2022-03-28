@@ -18,16 +18,14 @@
 package org.apache.livy.repl
 
 import java.io.File
-import java.net.URLClassLoader
+import java.net.{URL, URLClassLoader}
 import java.nio.file.{Files, Paths}
-
 import scala.tools.nsc.Settings
 import scala.tools.nsc.interpreter.Completion
 import scala.tools.nsc.interpreter.IMain
 import scala.tools.nsc.interpreter.JPrintWriter
 import scala.tools.nsc.interpreter.NoCompletion
 import scala.tools.nsc.interpreter.Results.Result
-
 import org.apache.spark.SparkConf
 import org.apache.spark.repl.SparkILoop
 
@@ -46,11 +44,37 @@ class SparkInterpreter(protected override val conf: SparkConf) extends AbstractS
     outputDir.deleteOnExit()
     conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath)
 
+    // https://github.com/apache/incubator-livy/pull/337
+    // get local user classpath
+    var classLoader = Thread.currentThread().getContextClassLoader
+    var extraJarPath: Array[URL] = null
+    while (classLoader != null) {
+      if (classLoader.getClass.getCanonicalName ==
+        "org.apache.spark.util.MutableURLClassLoader") {
+        extraJarPath = classLoader.asInstanceOf[URLClassLoader].getURLs
+          // Check if the file exists. Otherwise an exception will be thrown.
+          .filter { u => u.getProtocol == "file" && new File(u.getPath).isFile }
+          // Livy rsc and repl are also in the extra jars list. Filter them out.
+          .filterNot { u => Paths.get(u.toURI).getFileName.toString.startsWith("livy-") }
+          // Some bad spark packages depend on the wrong version of scala-reflect. Blacklist it.
+          .filterNot { u =>
+            Paths.get(u.toURI).getFileName.toString.contains("org.scala-lang_scala-reflect")
+          }
+        classLoader = null
+      } else {
+        classLoader = classLoader.getParent
+      }
+    }
+
     val settings = new Settings()
-    settings.processArguments(List("-Yrepl-class-based",
-      "-Yrepl-outdir", s"${outputDir.getAbsolutePath}"), true)
+    settings.processArguments(List(
+      "-Yrepl-class-based",
+      "-Yrepl-outdir", s"${outputDir.getAbsolutePath}",
+      "-classpath", extraJarPath.map(x => x.getPath).mkString(File.pathSeparator)
+    ), processAll = true)
+
     settings.usejavacp.value = true
-    settings.embeddedDefaults(Thread.currentThread().getContextClassLoader())
+    settings.embeddedDefaults(Thread.currentThread().getContextClassLoader)
 
     sparkILoop = new SparkILoop(None, new JPrintWriter(outputStream, true))
     sparkILoop.settings = settings
@@ -64,7 +88,7 @@ class SparkInterpreter(protected override val conf: SparkConf) extends AbstractS
       while (classLoader != null) {
         if (classLoader.getClass.getCanonicalName ==
           "org.apache.spark.util.MutableURLClassLoader") {
-          val extraJarPath = classLoader.asInstanceOf[URLClassLoader].getURLs()
+          val extraJarPath = classLoader.asInstanceOf[URLClassLoader].getURLs
             // Check if the file exists. Otherwise an exception will be thrown.
             .filter { u => u.getProtocol == "file" && new File(u.getPath).isFile }
             // Livy rsc and repl are also in the extra jars list. Filter them out.

@@ -88,7 +88,7 @@ public class JobWrapper<T> implements Callable<Void> {
     } else {
       isCancelled = true;
       driver.jobContext().sc().cancelJobGroup(jobId);
-      return future != null ? future.cancel(true) : true;
+      return future == null || future.cancel(true);
     }
   }
 

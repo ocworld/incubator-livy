@@ -48,6 +48,11 @@ class LivySparkUtilsSuite extends FunSuite with Matchers with LivyBaseUnitTestSu
     testSparkVersion("2.3.0")
     testSparkVersion("2.4.0")
     testSparkVersion("3.0.0")
+    testSparkVersion("3.1.0")
+    testSparkVersion("3.1.1")
+    testSparkVersion("3.1.2")
+    testSparkVersion("3.2.0")
+    testSparkVersion("3.2.1")
   }
 
   test("should complain about unsupported Spark versions") {
@@ -88,7 +93,7 @@ class LivySparkUtilsSuite extends FunSuite with Matchers with LivyBaseUnitTestSu
     defaultSparkScalaVersion(formatSparkVersion("2.2.1")) shouldBe "2.11"
     defaultSparkScalaVersion(formatSparkVersion("2.3.0")) shouldBe "2.11"
     defaultSparkScalaVersion(formatSparkVersion("2.4.0")) shouldBe "2.11"
-    defaultSparkScalaVersion(formatSparkVersion("3.0.0")) shouldBe "2.12"
+    defaultSparkScalaVersion(formatSparkVersion("3.2.0")) shouldBe "2.12"
   }
 
   test("sparkScalaVersion() should use spark-submit detected Scala version.") {
@@ -108,6 +113,6 @@ class LivySparkUtilsSuite extends FunSuite with Matchers with LivyBaseUnitTestSu
   test("sparkScalaVersion() should use default Spark Scala version.") {
     sparkScalaVersion(formatSparkVersion("2.2.0"), None, livyConf) shouldBe "2.11"
     sparkScalaVersion(formatSparkVersion("2.3.1"), None, livyConf) shouldBe "2.11"
-    sparkScalaVersion(formatSparkVersion("3.0.0"), None, livyConf) shouldBe "2.12"
+    sparkScalaVersion(formatSparkVersion("3.2.0"), None, livyConf) shouldBe "2.12"
   }
 }
